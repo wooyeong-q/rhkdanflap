@@ -87,7 +87,7 @@ export default async function handler(req, res) {
   const { message, mineral, context, records } = req.body || {};
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
   const primaryModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-  const fallbackModels = ["gemini-1.5-flash", "gemini-2.0-flash"].filter(m => m !== primaryModel);
+  const fallbackModels = ["gemini-2.5-flash-lite"].filter(m => m !== primaryModel);
   const modelsToTry = [primaryModel, ...fallbackModels];
 
   if (!apiKey) {
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } });
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 20000, retryOptions: { attempts: 1 }, headers: { "User-Agent": "aistudio-build" } } });
     const prompt = buildPrompt({ message, mineral, context, records });
     const errors = [];
     for (const model of modelsToTry) {
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
         errors.push(`${model}: ${modelError?.message || String(modelError)}`);
       }
     }
-    return res.status(200).json({ source: "gemini_model_error", reply: `Gemini 모델 호출이 실패했습니다. 시도한 모델: ${modelsToTry.join(", ")}\n오류: ${errors.join(" | ")}\n\n` + "Vercel 환경변수에 GEMINI_MODEL=gemini-2.5-flash 또는 GEMINI_MODEL=gemini-1.5-flash를 넣고 Redeploy 해 보세요.\n\n" + fallbackReply(message, mineral, context, records) });
+    return res.status(200).json({ source: "gemini_model_error", reply: `Gemini 모델 호출이 실패했습니다. 시도한 모델: ${modelsToTry.join(", ")}\n오류: ${errors.join(" | ")}\n\n` + "Vercel 환경변수에 GEMINI_MODEL=gemini-2.5-flash 또는 GEMINI_MODEL=gemini-2.5-flash-lite를 넣고 Redeploy 해 보세요.\n\n" + fallbackReply(message, mineral, context, records) });
   } catch (error) {
     const details = error?.message || String(error || "unknown error");
     return res.status(200).json({ source: "gemini_sdk_error", reply: `Gemini API 연결 오류가 발생했습니다. 원인: ${details}\n\n` + "확인할 것: Vercel의 GEMINI_API_KEY 값이 정확한지, 저장 후 Redeploy 했는지 확인해 주세요.\n\n" + fallbackReply(message, mineral, context, records) });
